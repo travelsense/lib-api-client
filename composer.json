@@ -1,0 +1,19 @@
+{
+  "name": "hoptrip/api-client",
+  "description": "PHP Client for HopTrip API",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Alexey Karapetov",
+      "email": "alexey@karapetov.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.0",
+    "phpcurl/curlhttp": "1.0.*"
+  },
+  "autoload": {
+    "psr-4": {"HopTrip\\": "src/"}
+  }
+}
