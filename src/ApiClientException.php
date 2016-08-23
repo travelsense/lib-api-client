@@ -1,5 +1,5 @@
 <?php
-namespace HopTrip;
+namespace HopTrip\ApiClient;
 
 use RuntimeException;
 
