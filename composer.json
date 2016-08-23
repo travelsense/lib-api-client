@@ -1,5 +1,5 @@
 {
-  "name": "hoptrip/api-client",
+  "name": "hoptrip/lib-api-client",
   "description": "PHP Client for HopTrip API",
   "minimum-stability": "stable",
   "license": "proprietary",
