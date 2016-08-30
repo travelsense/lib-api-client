@@ -2,6 +2,7 @@
   "name": "hoptrip/lib-api-client",
   "description": "PHP Client for HopTrip API",
   "minimum-stability": "stable",
+  "version": "dev-master",
   "license": "proprietary",
   "authors": [
     {
