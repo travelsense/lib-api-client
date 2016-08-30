@@ -1,7 +1,6 @@
 {
   "name": "hoptrip/lib-api-client",
   "description": "PHP Client for HopTrip API",
-  "minimum-stability": "stable",
   "license": "proprietary",
   "authors": [
     {
@@ -11,9 +10,13 @@
   ],
   "require": {
     "php": ">=7.0",
-    "phpcurl/curlhttp": "1.0.*"
+    "phpcurl/curlhttp": "^1"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^5",
+    "squizlabs/php_codesniffer": "~2.5"
   },
   "autoload": {
-    "psr-4": {"HopTrip\\ApiClient\\": "src/"}
+    "psr-4": {"HopTrip\\ApiClient\\" : "src/"}
   }
 }
