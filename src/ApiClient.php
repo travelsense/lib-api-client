@@ -107,6 +107,27 @@ class ApiClient
     }
 
     /**
+     * Get published travel by author
+     *
+     * @param int $author_id
+     * @param bool $minimized
+     * @param int $limit
+     * @param int $offset
+     * @return mixed
+     */
+    public function getPublishedByAuthor(int $author_id, $minimized = true, int $limit = 10, int $offset = 0)
+    {
+        $url = sprintf('/user/%d/travels?', urlencode($author_id))
+            . http_build_query([
+                'minimized' => $minimized,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+
+        return $this->get($url);
+    }
+
+    /**
      * Update user data
      *
      * @param array $request
