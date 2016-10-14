@@ -331,12 +331,13 @@ class ApiClient
     }
 
     /**
-     * @param int $id Travel id
+     * @param int   $id Travel id
+     * @param array $details
      * @return mixed
      */
-    public function registerBooking(int $id)
+    public function registerBooking(int $id, array $details = [])
     {
-        return $this->post(sprintf("/travel/%s/book", urldecode($id)));
+        return $this->post(sprintf("/travel/%s/book", urldecode($id)), $details);
     }
 
     /**
