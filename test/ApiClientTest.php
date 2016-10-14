@@ -6,6 +6,20 @@ use PHPCurl\CurlHttp\HttpResponse;
 
 class ApiClientTest extends \PHPUnit_Framework_TestCase
 {
+    private $http;
+
+    /**
+     * @var ApiClient
+     */
+    private $client;
+
+    public function setUp()
+    {
+        $this->http = $this->getMockBuilder(HttpClient::class)->getMock();
+        $this->client = new ApiClient('http://localhost', $this->http);
+
+    }
+
     /**
      * @expectedException \HopTrip\ApiClient\ApiClientException
      * @expectedExceptionMessage foo
@@ -13,9 +27,6 @@ class ApiClientTest extends \PHPUnit_Framework_TestCase
      */
     public function testException()
     {
-        $http = $this->getMockBuilder(HttpClient::class)
-            ->getMock();
-
         $response = $this->getMockBuilder(HttpResponse::class)
             ->disableOriginalConstructor()
             ->getMock();
@@ -29,9 +40,30 @@ class ApiClientTest extends \PHPUnit_Framework_TestCase
             ));
 
         $response->method('getCode')->willReturn(500);
-        $client = new ApiClient('http://localhost', $http);
 
-        $http->method('get')->willReturn($response);
-        $client->getCurrentUser();
+        $this->http->method('get')->willReturn($response);
+        $this->client->getCurrentUser();
+    }
+
+    public function testRegisterBooking()
+    {
+        $response = $this->getMockBuilder(HttpResponse::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $response->method('getHeaders')->willReturn([]);
+        $response->method('getBody')->willReturn('{}');
+        $response->method('getCode')->willReturn(200);
+
+        $this->http
+            ->expects($this->once())
+            ->method('post')
+            ->with('http://localhost/travel/42/book', '{"foo":"bar"}')
+            ->willReturn($response);
+
+        $this->assertEquals(
+            (object) [],
+            $this->client->registerBooking(42, ['foo' => 'bar'])
+        );
     }
 }
