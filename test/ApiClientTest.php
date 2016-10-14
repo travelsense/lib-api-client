@@ -17,7 +17,6 @@ class ApiClientTest extends \PHPUnit_Framework_TestCase
     {
         $this->http = $this->getMockBuilder(HttpClient::class)->getMock();
         $this->client = new ApiClient('http://localhost', $this->http);
-
     }
 
     /**
