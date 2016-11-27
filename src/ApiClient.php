@@ -1,405 +1,260 @@
 <?php
 namespace HopTrip\ApiClient;
 
-use PHPCurl\CurlHttp\HttpClient;
-use PHPCurl\CurlHttp\HttpResponse;
-use RuntimeException;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 
 class ApiClient
 {
+
     /**
      * @var string
      */
     private $auth_token;
 
     /**
-     * @var string
-     */
-    private $host;
-
-    /**
-     * @var HttpClient
+     * @var Client
      */
     private $http;
 
-    /**
-     * ApiClient constructor.
-     *
-     * @param string     $host
-     * @param HttpClient $http
-     */
-    public function __construct(string $host, HttpClient $http = null)
+    public function __construct(Client $http)
     {
-        $this->http = $http ?: new HttpClient();
-        $this->host = $host;
+        $this->http = $http;
     }
 
-    /**
-     * @param string $auth_token
-     */
     public function setAuthToken(string $auth_token = null)
     {
         $this->auth_token = $auth_token;
     }
 
-    /**
-     * Register new user
-     *
-     * @param  array $user (firstName, lastName, email, password, picture)
-     * @return object
-     *
-     * Example: $client->registerUser([
-     *  'firstName' => 'Alexander'
-     *  'lastName'=> 'Pushkin',
-     *  'email' => 'sasha@nashe-vse.ru',
-     *  'password' => 'd4n73s l0h',
-     * ]);
-     */
     public function registerUser(array $user)
     {
-        return $this->post('/user', $user);
+        return $this->post('/user', ['json' => $user]);
     }
 
-    /**
-     * @param string $email
-     * @param string $password
-     * @return string Auth token
-     */
-    public function getTokenByEmail(string $email, string $password)
+    public function getTokenByEmail(string $email, string $password): string
     {
-        return $this->post('/token', ['email' => $email, 'password' => $password])
+        return $this->post('/token', ['json' => ['email' => $email, 'password' => $password]])
             ->token;
     }
 
-    /**
-     * @param string $fbToken
-     * @return string Auth token
-     */
-    public function getTokenByFacebook(string $fbToken)
+    public function getTokenByFacebook(string $fbToken): string
     {
-        return $this->post('/token', ['fbToken' => $fbToken])
+        return $this->post('/token', ['json' => ['fbToken' => $fbToken]])
             ->token;
     }
 
     public function confirmEmail(string $email)
     {
-        return $this->post('/email/confirm/' . urlencode($email));
+        return $this->post($this->formatUri('/email/confirm/%s', $email));
     }
 
     public function requestPasswordReset(string $email)
     {
-        return $this->post('/password/link/' . urlencode($email));
+        return $this->post($this->formatUri('/password/link/%s', $email));
     }
 
     public function updatePassword(string $token, string $password)
     {
-        return $this->post('/password/reset/' . urlencode($token), ['password' => $password]);
+        return $this->post(
+            $this->formatUri('/password/reset/%s', $token),
+            ['json' => ['password' => $password]]
+        );
     }
 
-    /**
-     * Get current user info
-     *
-     * @return object
-     */
     public function getCurrentUser()
     {
         return $this->get('/user');
     }
 
-    /**
-     * Get published travel by author
-     *
-     * @param int $author_id
-     * @param bool $minimized
-     * @param int $limit
-     * @param int $offset
-     * @return mixed
-     */
-    public function getPublishedByAuthor(int $author_id, $minimized = true, int $limit = 10, int $offset = 0)
-    {
-        $url = sprintf('/user/%d/travels?', urlencode($author_id))
-            . http_build_query([
-                'minimized' => $minimized,
-                'limit' => $limit,
-                'offset' => $offset,
-            ]);
-
-        return $this->get($url);
+    public function getPublishedByAuthor(
+        int $author_id,
+        bool $minimized = true,
+        int $limit = 10,
+        int $offset = 0
+    ): array {
+        return $this->get(
+            $this->formatUri('/user/%s/travels', $author_id),
+            [
+                'query' => [
+                    'minimized' => $minimized,
+                    'limit'     => $limit,
+                    'offset'    => $offset,
+                ],
+            ]
+        );
     }
 
-    /**
-     * Update user data
-     *
-     * @param array $request
-     * @return object
-     */
-    public function updateUser(array $request)
+    public function updateUser(array $user)
     {
-        return $this->put('/user', $request);
+        return $this->put('/user', ['json' => $user]);
     }
 
     public function getCabEstimates(float $lat1, float $lon1, float $lat2, float $lon2)
     {
-        return $this->get("/cab/$lat1/$lon1/$lat2/$lon2");
+        return $this->get($this->formatUri('/cab/%s/%s/%s/%s', $lat1, $lon1, $lat2, $lon2));
     }
 
-    /**
-     * start search
-     *
-     * @param  int    $location wego location id
-     * @param  string $in       yyyy-mm-dd
-     * @param  string $out      yyyy-mm-dd
-     * @param  int    $rooms
-     * @return int wego search id
-     */
     public function startHotelSearch(int $location, string $in, string $out, int $rooms)
     {
-        return $this->post("/hotel/search/$location/$in/$out/$rooms");
+        return $this->post($this->formatUri('/hotel/search/%s/%s/%s/%s', $location, $in, $out, $rooms));
     }
 
-    /**
-     * get search results
-     *
-     * @param  int $id   wego search id
-     * @param  int $page page number
-     * @return array
-     */
     public function getHotelSearchResults(int $id, int $page = 1)
     {
-        return $this->get("/hotel/search-results/$id/$page");
+        return $this->get($this->formatUri('/hotel/search-results/%s/%s', $id, $page));
     }
 
-    /**
-     * Create a new Travel
-     * @param array $travel
-     * @return int
-     */
-    public function createTravel(array $travel)
+    public function createTravel(array $travel): int
     {
-        return $this->post('/travel', $travel)->id;
+        return $this->post('/travel', ['json' => $travel])->id;
     }
 
-    /**
-     * Create a new Comment
-     *
-     * @param int    $id
-     * @param string $text
-     * @return int
-     */
-    public function addTravelComment(int $id, string $text)
+    public function addTravelComment(int $id, string $text): int
     {
-        return $this->post(sprintf('/travel/%s/comment', urlencode($id)), [
-            'text' => $text,
-        ])->id;
+        return $this->post(
+            $this->formatUri('/travel/%s/comment', $id),
+            [
+                'json' => [
+                    'text' => $text,
+                ],
+            ]
+        )->id;
     }
 
-    /**
-     * Delete a comment
-     *
-     * @param int $id
-     * @return mixed
-     */
     public function deleteTravelComment(int $id)
     {
-        return $this->delete(sprintf('/travel/comment/%s', urlencode($id)));
+        return $this->delete($this->formatUri('/travel/comment/%s', $id));
     }
 
-    public function getTravelComments(int $id, int $limit, int $offset)
+    public function getTravelComments(int $id, int $limit, int $offset): array
     {
-        $url = sprintf('/travel/%d/comments?', urlencode($id))
-            . http_build_query([
-                'limit' => $limit,
-                'offset' => $offset,
-            ]);
-
-        return $this->get($url);
+        return $this->get(
+            $this->formatUri('/travel/%d/comments', $id),
+            [
+                'query' => [
+                    'limit' => $limit,
+                    'offset' => $offset,
+                ]
+            ]
+        );
     }
 
-    /**
-     * Create a new Category
-     *
-     * @param string $name
-     * @return mixed
-     */
-    public function createCategory(string $name)
+    public function createCategory(string $name): int
     {
-        return $this->post('/category', ['name' => $name,])->id;
+        return $this->post('/category', ['json' => ['name' => $name]])->id;
     }
 
-    /**
-     * @param string $name
-     * @return mixed
-     */
     public function getCategories(string $name = null)
     {
-        $url = '/categories';
-        if ($name !== null) {
-            $url .= '?' . http_build_query(['name' => $name]);
-        }
-        return $this->get($url);
+        return $this->get('/travel/categories', $name ? ['query' => ['name' => $name]] : []);
     }
 
-    /**
-     * @param string $name
-     * @return mixed
-     */
-    public function getTravelCategories(string $name = null)
-    {
-        $url = '/travel/categories';
-        if ($name !== null) {
-            $url .= '?' . http_build_query(['name' => $name]);
-        }
-        return $this->get($url);
-    }
-
-    /**
-     * @param $id
-     * @return mixed
-     */
     public function getTravel(int $id)
     {
-        return $this->get('/travel/' . urlencode($id));
+        return $this->get($this->formatUri('/travel/%s', $id));
     }
 
-    /**
-     * @param string $name
-     * @return mixed
-     */
     public function getTravelsByCategory(string $name)
     {
-        return $this->get('/travel/by-category/' . urlencode($name));
+        return $this->get($this->formatUri('/travel/by-category/%s', $name));
     }
 
-    /**
-     * @return mixed
-     */
     public function getMyTravels()
     {
         return $this->get('/travel/by-user');
     }
 
-    /**
-     * @param int $id
-     * @param array $travel
-     */
     public function updateTravel(int $id, array $travel)
     {
-        $this->put('/travel/' . urlencode($id), $travel);
+        return $this->put($this->formatUri('/travel/%s', $id), ['json' => $travel]);
     }
 
-    /**
-     * @param int $id
-     * @return void
-     */
     public function deleteTravel(int $id)
     {
-        $this->delete('/travel/' . urlencode($id));
+        return $this->delete($this->formatUri('/travel/%s', $id));
     }
 
-    /**
-     * @param int $id
-     * @return object
-     */
     public function addTravelToFavorites(int $id)
     {
-        return $this->post(sprintf('/travel/%s/favorite', urlencode($id)));
+        return $this->post($this->formatUri('/travel/%s/favorite', $id));
     }
 
-    /**
-     * @param int $id
-     * @return object
-     */
     public function removeTravelFromFavorites(int $id)
     {
-        return $this->delete(sprintf('/travel/%s/favorite', urlencode($id)));
+        return $this->delete($this->formatUri('/travel/%s/favorite', $id));
     }
 
-    /**
-     * @return array
-     */
     public function getFavoriteTravels()
     {
         return $this->get('/travel/favorite');
     }
 
-    /**
-     * @return array
-     */
     public function getFeatured()
     {
         return $this->get('/travel/featured');
     }
 
-    /**
-     * @param int   $id Travel id
-     * @param array $details
-     * @return mixed
-     */
-    public function registerBooking(int $id, array $details = [])
+    public function registerBooking(int $id, array $details)
     {
-        return $this->post(sprintf("/travel/%s/book", urldecode($id)), $details);
+        return $this->post($this->formatUri("/travel/%s/book", $id), ['json' => $details]);
     }
 
-    /**
-     * @return mixed
-     */
     public function getStats()
     {
         return $this->get('/stats');
     }
 
-    private function addAuth(array $headers): array
+    public function uploadImage(string $content)
     {
-        if (!empty($this->auth_token)) {
-            $headers[] = 'Authorization: Token ' . $this->auth_token;
+        return $this->post('/image', ['body' => $content]);
+    }
+
+    private function formatUri(string $format, ...$args): string
+    {
+        return sprintf($format, ...array_map('urlencode', $args));
+    }
+
+    private function get(string $uri, array $options = [])
+    {
+        return $this->call('GET', $uri, $options);
+    }
+
+    private function post(string $uri, array $options = [])
+    {
+        return $this->call('POST', $uri, $options);
+    }
+
+    private function put(string $uri, array $options = [])
+    {
+        return $this->call('PUT', $uri, $options);
+    }
+
+    private function delete(string $uri, array $options = [])
+    {
+        return $this->call('DELETE', $uri, $options);
+    }
+
+    private function call(string $method, string $uri, array $options = [])
+    {
+        if ($this->auth_token) {
+            $options['headers']['Authorization'] = "Token {$this->auth_token}";
         }
-        return $headers;
-    }
-
-    /**
-     * @param HttpResponse $response
-     * @return mixed
-     */
-    private function parse(HttpResponse $response)
-    {
-        if ($response->getCode() === 200) {
-            return json_decode($response->getBody());
+        try {
+            return json_decode(
+                $this->http
+                    ->request($method, $uri, $options)
+                    ->getBody()
+                    ->getContents()
+            );
+        } catch (ClientException $e) {
+            if ($e->hasResponse()) {
+                $error = json_decode($e->getResponse()->getBody()->getContents());
+                if (isset($error->error, $error->code)) {
+                    throw new ApiClientException($error->error, $error->code);
+                }
+            }
+            throw $e;
         }
-        $error = @json_decode($response->getBody());
-        if (!empty($error)) {
-            throw new ApiClientException($error->error, $error->code);
-        }
-        $message = "HTTP ERROR {$response->getCode()}\n"
-            . implode("\n", $response->getHeaders())
-            . "\n\n" . $response->getBody();
-        throw new RuntimeException($message, $response->getCode());
-    }
-
-    private function get($url, array $headers = [])
-    {
-        $headers = $this->addAuth($headers);
-        $response = $this->http->get($this->host . $url, $headers);
-        return $this->parse($response);
-    }
-
-    private function post($url, array $body = [], array $headers = [])
-    {
-        $headers = $this->addAuth($headers);
-        $response = $this->http->post($this->host . $url, json_encode($body), $headers);
-        return $this->parse($response);
-    }
-
-    private function put($url, array $body = [], array $headers = [])
-    {
-        $headers = $this->addAuth($headers);
-        $response = $this->http->put($this->host . $url, json_encode($body), $headers);
-        return $this->parse($response);
-    }
-
-    private function delete($url, array $headers = [])
-    {
-        $headers = $this->addAuth($headers);
-        $response = $this->http->delete($this->host . $url, $headers);
-        return $this->parse($response);
     }
 }
