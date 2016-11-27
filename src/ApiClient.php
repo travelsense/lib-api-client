@@ -145,7 +145,7 @@ class ApiClient
         return $this->post('/category', ['json' => ['name' => $name]])->id;
     }
 
-    public function getCategories(string $name = null)
+    public function getTravelCategories(string $name = null)
     {
         return $this->get('/travel/categories', $name ? ['query' => ['name' => $name]] : []);
     }
