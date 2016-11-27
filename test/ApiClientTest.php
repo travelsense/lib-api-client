@@ -1,68 +1,148 @@
 <?php
 namespace HopTrip\ApiClient;
 
-use PHPCurl\CurlHttp\HttpClient;
-use PHPCurl\CurlHttp\HttpResponse;
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use PHPUnit\Framework\TestCase;
 
-class ApiClientTest extends \PHPUnit_Framework_TestCase
+class ApiClientTest extends TestCase
 {
-    private $http;
-
-    /**
-     * @var ApiClient
-     */
-    private $client;
-
-    public function setUp()
+    public function schema()
     {
-        $this->http = $this->getMockBuilder(HttpClient::class)->getMock();
-        $this->client = new ApiClient('http://localhost', $this->http);
+        return [
+            [
+                'registerUser',
+                [['foo' => 'bar']],
+                new Response(200),
+                null,
+                'POST',
+                '/user',
+                '{"foo":"bar"}',
+            ],
+            [
+                'getTokenByEmail',
+                ['my_email', 'my_pass'],
+                new Response(200, [], '{"token":"yo"}'),
+                'yo',
+                'POST',
+                '/token',
+                '{"email":"my_email","password":"my_pass"}'
+            ],
+            [
+                'getTokenByFacebook',
+                ['my_fb_token'],
+                new Response(200, [], '{"token":"yo"}'),
+                'yo',
+                'POST',
+                '/token',
+                '{"fbToken":"my_fb_token"}'
+            ],
+            [
+                'confirmEmail',
+                ['user@example.com'],
+                new Response(200, [], '{"foo":"bar"}'),
+                (object) ['foo'=> 'bar'],
+                'POST',
+                '/email/confirm/user%40example.com',
+            ],
+            [
+                'requestPasswordReset',
+                ['user@example.com'],
+                new Response(200, [], '{"foo":"bar"}'),
+                (object) ['foo'=> 'bar'],
+                'POST',
+                '/password/link/user%40example.com',
+            ],
+            [
+                'updatePassword',
+                ['my_token', 'my_pass'],
+                new Response(200, [], '{"foo":"bar"}'),
+                (object) ['foo'=> 'bar'],
+                'POST',
+                '/password/reset/my_token',
+                '{"password":"my_pass"}'
+            ],
+            [
+                'getCurrentUser',
+                [],
+                new Response(200, [], '{"foo":"bar"}'),
+                (object) ['foo'=> 'bar'],
+                'GET',
+                '/user',
+            ],
+            [
+                'getPublishedByAuthor',
+                [42, true, 1, 2],
+                new Response(200, [], '[{"foo":"bar"}]'),
+                [(object) ['foo'=> 'bar']],
+                'GET',
+                '/user/42/travels?minimized=1&limit=1&offset=2',
+            ],
+            [
+                'updateUser',
+                [['aaa'=> 'bbb']],
+                new Response(200, [], '[{"foo":"bar"}]'),
+                [(object) ['foo'=> 'bar']],
+                'PUT',
+                '/user',
+                '{"aaa":"bbb"}'
+            ],
+        ];
     }
 
     /**
-     * @expectedException \HopTrip\ApiClient\ApiClientException
-     * @expectedExceptionMessage foo
-     * @expectedExceptionCode    42
+     * @dataProvider schema
+     * @param string   $method
+     * @param array    $args
+     * @param Response $response
+     * @param          $expected_result
+     * @param string   $request_method
+     * @param string   $request_uri
+     * @param string   $request_body
      */
-    public function testException()
-    {
-        $response = $this->getMockBuilder(HttpResponse::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+    public function testAll(
+        string $method,
+        array $args,
+        Response $response,
+        $expected_result,
+        string $request_method,
+        string $request_uri,
+        string $request_body = ''
+    ) {
+        $mock = new MockHandler([
+            $response,
+            new Response(401, [], '{"error":"omg","code":42}')
+        ]);
+        $container = [];
+        $history = Middleware::history($container);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+        $guzzle = new Client([
+            'base_url' => 'https://example.com',
+            'handler' => $handler
+        ]);
+        $client = new ApiClient($guzzle);
+        $client->setAuthToken('mytoken');
 
-        $response->method('getBody')
-            ->willReturn(json_encode(
-                [
-                    'error' => 'foo',
-                    'code'  => 42,
-                ]
-            ));
+        $result = call_user_func_array([$client, $method], $args);
+        /** @var Request $request */
+        $request = $container[0]['request'];
+        $this->assertEquals($expected_result, $result);
+        $this->assertEquals($request_method, $request->getMethod());
+        $this->assertEquals($request_body, $request->getBody()->getContents());
+        $this->assertEquals($request_uri, (string) $request->getUri());
+        $this->assertEquals('Token mytoken', $request->getHeaderLine('Authorization'));
 
-        $response->method('getCode')->willReturn(500);
-
-        $this->http->method('get')->willReturn($response);
-        $this->client->getCurrentUser();
-    }
-
-    public function testRegisterBooking()
-    {
-        $response = $this->getMockBuilder(HttpResponse::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $response->method('getHeaders')->willReturn([]);
-        $response->method('getBody')->willReturn('{}');
-        $response->method('getCode')->willReturn(200);
-
-        $this->http
-            ->expects($this->once())
-            ->method('post')
-            ->with('http://localhost/travel/42/book', '{"foo":"bar"}')
-            ->willReturn($response);
-
-        $this->assertEquals(
-            (object) [],
-            $this->client->registerBooking(42, ['foo' => 'bar'])
-        );
+        try {
+            call_user_func_array([$client, $method], $args);
+            $this->fail('Exception expected');
+        } catch (ApiClientException $e) {
+            $this->assertEquals('omg', $e->getMessage());
+            $this->assertEquals(42, $e->getCode());
+        }
     }
 }
