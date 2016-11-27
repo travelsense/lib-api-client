@@ -122,7 +122,6 @@ class ApiClientTest extends TestCase
         $handler = HandlerStack::create($mock);
         $handler->push($history);
         $guzzle = new Client([
-            'base_url' => 'https://example.com',
             'handler' => $handler
         ]);
         $client = new ApiClient($guzzle);
