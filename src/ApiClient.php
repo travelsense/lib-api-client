@@ -167,7 +167,7 @@ class ApiClient
 
     public function updateTravel(int $id, array $travel)
     {
-        return $this->put( $this->formatUri('/travel/%s', $id), ['json' => $travel]);
+        return $this->put($this->formatUri('/travel/%s', $id), ['json' => $travel]);
     }
 
     public function deleteTravel(int $id)
