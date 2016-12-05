@@ -241,12 +241,10 @@ class ApiClient
             $options['headers']['Authorization'] = "Token {$this->auth_token}";
         }
         try {
-            return json_decode(
-                $this->http
-                    ->request($method, $uri, $options)
-                    ->getBody()
-                    ->getContents()
-            );
+            /** @var \Psr\Http\Message\StreamInterface $body */
+            $body = $this->http
+                ->request($method, $uri, $options)
+                ->getBody();
         } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $error = json_decode($e->getResponse()->getBody()->getContents());
@@ -256,5 +254,7 @@ class ApiClient
             }
             throw $e;
         }
+
+        return json_decode($body); // StreamInterface gets converted to string implicitly
     }
 }
