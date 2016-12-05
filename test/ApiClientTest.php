@@ -115,7 +115,7 @@ class ApiClientTest extends TestCase
     ) {
         $mock = new MockHandler([
             $response,
-            new Response(401, [], '{"error":"omg","code":42}')
+            new Response(403, [], '{"error":"omg","code":42}')
         ]);
         $container = [];
         $history = Middleware::history($container);
