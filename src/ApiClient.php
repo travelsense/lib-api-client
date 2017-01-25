@@ -85,11 +85,6 @@ class ApiClient
         );
     }
 
-    public function updateUser(array $user)
-    {
-        return $this->put('/user', ['json' => $user]);
-    }
-
     public function getCabEstimates(float $lat1, float $lon1, float $lat2, float $lon2)
     {
         return $this->get($this->formatUri('/cab/%s/%s/%s/%s', $lat1, $lon1, $lat2, $lon2));
