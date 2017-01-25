@@ -82,15 +82,6 @@ class ApiClientTest extends TestCase
                 'GET',
                 '/user/42/travels?minimized=1&limit=1&offset=2',
             ],
-            [
-                'updateUser',
-                [['aaa'=> 'bbb']],
-                new Response(200, [], '[{"foo":"bar"}]'),
-                [(object) ['foo'=> 'bar']],
-                'PUT',
-                '/user',
-                '{"aaa":"bbb"}'
-            ],
         ];
     }
 
